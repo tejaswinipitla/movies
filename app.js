@@ -16,8 +16,8 @@ const initializeDbAndServer = async () => {
       filename: databasePath,
       driver: sqlite3.Database,
     });
-    app.listen(3000, () =>
-      console.log("Server Running at http://localhost:3000/")
+    app.listen(3003, () =>
+      console.log("Server Running at http://localhost:3003/")
     );
   } catch (e) {
     console.log(`DB Error:${e.message}`);
@@ -36,6 +36,12 @@ const converting = (dbObject) => {
   };
 };
 
+const convertingMovie = (dbObject) => {
+  return {
+    movieName: dbObject.movie_name,
+  };
+};
+
 const convertingDirector = (dbObject) => {
   return {
     directorId: dbObject.director_id,
@@ -43,16 +49,20 @@ const convertingDirector = (dbObject) => {
   };
 };
 
+const convertingMovieName = (dbObject) => {
+  return {
+    movieName: dbObject.movie_name,
+  };
+};
+
 app.get("/movies/", async (request, response) => {
   const getMoviesQuery = `
     SELECT
-      *
+      movie_name
     FROM 
       movie;`;
   const moviesArray = await database.all(getMoviesQuery);
-  response.send(
-    moviesArray.map((eachMovie) => converting(eachMovie.movieName))
-  );
+  response.send(moviesArray.map((eachMovie) => convertingMovie(eachMovie)));
 });
 
 app.get("/movies/:movieId/", async (request, response) => {
@@ -79,15 +89,15 @@ app.post("/movies/", async (request, response) => {
   response.send("Movie Successfully Added");
 });
 
-app.put("/players/:playerId/", async (request, response) => {
+app.put("/movies/:movieId/", async (request, response) => {
   const { directorId, movieName, leadActor } = request.body;
   const { movieId } = request.params;
   const updateMovieQuery = `
     UPDATE 
       movie
     SET 
-      director_id='${directorId}',
-      movie_name = ${movieName},
+      director_id=${directorId},
+      movie_name = '${movieName}',
       lead_actor = '${leadActor}'
     WHERE 
       movie_id = ${movieId};`;
@@ -123,13 +133,15 @@ app.get("/directors/:directorId/movies/", async (request, response) => {
   const { directorId } = request.params;
   const getDirectorQuery = `
     SELECT 
-      *
+      movie_name
     FROM 
-      movie 
+      director INNER JOIN movie ON director.director_id = movie.director_id
     WHERE 
-      director_id = ${directorId};`;
-  const director_movie = await database.get(getDirectorQuery);
-  response.send(converting(director_movie.movieName));
+      director.director_id = ${directorId};`;
+  const director_movie = await database.all(getDirectorQuery);
+  response.send(
+    director_movie.map((movienames) => convertingMovieName(movienames))
+  );
 });
 
 module.exports = app;
